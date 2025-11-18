@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>头颈癌放疗患者CRF风险预测工具 - SGD模型版</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+
+        :root {
+
+            --primary-color: #1890ff;
+
+            --success-color: #52c41a;
+
+            --warning-color: #faad14;
+
+            --danger-color: #f5222d;
+
+        }
+
+       
+
+        body {
+
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+
+            min-height: 100vh;
+
+            font-family: "Microsoft YaHei", sans-serif;
+
+        }
+
+       
+
+        .header-section {
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+            color: white;
+
+            padding: 2rem 0;
+
+            border-radius: 0 0 20px 20px;
+
+            margin-bottom: 2rem;
+
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+
+        }
+
+       
+
+        .input-section {
+
+            background: white;
+
+            padding: 2rem;
+
+            border-radius: 15px;
+
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+
+            margin-bottom: 2rem;
+
+        }
+
+       
+
+        .result-section {
+
+            background: white;
+
+            padding: 2rem;
+
+            border-radius: 15px;
+
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+
+        }
+
+       
+
+        .risk-low {
+
+            color: var(--success-color);
+
+            background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+
+            border: 2px solid var(--success-color);
+
+        }
+
+        .risk-medium {
+
+            color: var(--warning-color);
+
+            background: linear-gradient(135deg, #fffbe6 0%, #ffe58f 100%);
+
+            border: 2px solid var(--warning-color);
+
+        }
+
+        .risk-high {
+
+            color: var(--danger-color);
+
+            background: linear-gradient(135deg, #fff2f0 0%, #ffccc7 100%);
+
+            border: 2px solid var(--danger-color);
+
+        }
+
+        
+
+        .risk-card {
+
+            padding: 2rem;
+
+            border-radius: 15px;
+
+            text-align: center;
+
+            margin-bottom: 1.5rem;
+
+            transition: all 0.3s ease;
+
+        }
+
+       
+
+        .risk-card:hover {
+
+            transform: translateY(-5px);
+
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+
+        }
+
+       
+
+        .suggestion-item {
+
+            border-left: 4px solid var(--primary-color);
+
+            padding: 1rem;
+
+            margin-bottom: 1rem;
+
+            background: #f8f9fa;
+
+            border-radius: 8px;
+
+            transition: all 0.3s ease;
+
+        }
+
+       
+
+        .suggestion-item:hover {
+
+            background: #e3f2fd;
+
+            transform: translateX(5px);
+
+        }
+
+       
+
+        .form-label {
+
+            font-weight: 600;
+
+            color: #2c3e50;
+
+            margin-bottom: 0.5rem;
+
+        }
+
+       
+
+        .btn-predict {
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+            border: none;
+
+            padding: 12px 30px;
+
+            font-size: 1.1rem;
+
+            border-radius: 25px;
+
+            transition: all 0.3s ease;
+
+        }
+
+       
+
+        .btn-predict:hover {
+
+            transform: translateY(-2px);
+
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+
+        }
+
+       
+
+        .feature-icon {
+
+            width: 24px;
+
+            height: 24px;
+
+            margin-right: 8px;
+
+            color: var(--primary-color);
+
+        }
+
+       
+
+        .loading-spinner {
+
+            display: none;
+
+            text-align: center;
+
+            padding: 2rem;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <!-- 头部区域 -->
+
+    <div class="header-section">
+
+        <div class="container">
+
+            <div class="row align-items-center">
+
+                <div class="col-md-8">
+
+                    <h1 class="display-5 fw-bold">
+
+                        <i class="fas fa-stethoscope me-3"></i>
+
+                        头颈癌放疗患者CRF风险预测工具
+
+                    </h1>
+
+                    <p class="lead mb-0">基于SGD机器学习模型的个性化风险评估系统</p>
+
+                </div>
+
+                <div class="col-md-4 text-end">
+
+                    <div class="badge bg-light text-dark p-2">
+
+                        <i class="fas fa-brain me-1"></i>
+
+                        SGD模型 | 14项特征 | 实时预测
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+ 
+
+    <div class="container">
+
+        <div class="row">
+
+            <!-- 左侧输入区域 -->
+
+            <div class="col-lg-6">
+
+                <div class="input-section">
+
+                    <h4 class="mb-4">
+
+                        <i class="fas fa-edit feature-icon"></i>
+
+                        患者信息输入
+
+                    </h4>
+
+                   
+
+                    <form id="predictionForm">
+
+                        <!-- 第1行：睡眠障碍 + 焦虑程度 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-bed feature-icon"></i>
+
+                                    睡眠障碍
+
+                                </label>
+
+                                <select class="form-select" id="睡眠障碍" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="0">无睡眠障碍</option>
+
+                                    <option value="1">有睡眠障碍</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-brain feature-icon"></i>
+
+                                    焦虑程度
+
+                                </label>
+
+                                <select class="form-select" id="焦虑程度" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="1">正常范围</option>
+
+                                    <option value="2">轻度焦虑</option>
+
+                                    <option value="3">中度焦虑</option>
+
+                                    <option value="4">重度焦虑</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第2行：抑郁程度 + 肿瘤分期 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-sad-tear feature-icon"></i>
+
+                                    抑郁程度
+
+                                </label>
+
+                                <select class="form-select" id="抑郁程度" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="1">正常范围</option>
+
+                                    <option value="2">轻度抑郁</option>
+
+                                    <option value="3">中度抑郁</option>
+
+                                    <option value="4">重度抑郁</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-tasks feature-icon"></i>
+
+                                    肿瘤分期
+
+                                </label>
+
+                                <select class="form-select" id="肿瘤分期" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="1">Ⅰ期</option>
+
+                                    <option value="2">Ⅱ期</option>
+
+                                    <option value="3">Ⅲ期</option>
+
+                                    <option value="4">Ⅳ期</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第3行：放疗次数 + 营养风险 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-radiation feature-icon"></i>
+
+                                    放疗次数
+
+                                </label>
+
+                                <select class="form-select" id="放疗次数" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="1">1-10次</option>
+
+                                    <option value="2">11-20次</option>
+
+                                    <option value="3">21-30次</option>
+
+                                    <option value="4">≥31次</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-apple-alt feature-icon"></i>
+
+                                    营养风险
+
+                                </label>
+
+                                <select class="form-select" id="营养风险" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="0">无营养风险</option>
+
+                                    <option value="1">有营养风险</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第4行：疼痛 + 社会支持 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-band-aid feature-icon"></i>
+
+                                    疼痛
+
+                                </label>
+
+                                <select class="form-select" id="疼痛" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="0">无疼痛</option>
+
+                                    <option value="1">有疼痛</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-hands-helping feature-icon"></i>
+
+                                    社会支持
+
+                                </label>
+
+                                <select class="form-select" id="社会支持" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="1">低支持</option>
+
+                                    <option value="2">中支持</option>
+
+                                    <option value="3">高支持</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第5行：病情程度 + 年龄 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-file-medical feature-icon"></i>
+
+                                    病情程度
+
+                                </label>
+
+                                <select class="form-select" id="病情程度" required>
+
+                                    <option value="">请选择...</option>
+
+                                    <option value="0">轻度</option>
+
+                                    <option value="1">重度</option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-birthday-cake feature-icon"></i>
+
+                                    年龄 (岁)
+
+                                </label>
+
+                                <input type="number" class="form-control" id="年龄"
+
+                                       min="18" max="100" placeholder="输入年龄" required>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第6行：血清白蛋白 + 白细胞计数 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-vial feature-icon"></i>
+
+                                    血清白蛋白 (g/L)
+
+                                </label>
+
+                                <input type="number" class="form-control" id="血清白蛋白"
+
+                                       step="0.1" min="20" max="60" placeholder="输入数值" required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-microscope feature-icon"></i>
+
+                                    白细胞计数 (×10⁹/L)
+
+                                </label>
+
+                                <input type="number" class="form-control" id="白细胞计数"
+
+                                       step="0.1" min="1" max="30" placeholder="输入数值" required>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 第7行：中性粒细胞 + 血红蛋白 -->
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-bacteria feature-icon"></i>
+
+                                    中性粒细胞 (×10⁹/L)
+
+                                </label>
+
+                                <input type="number" class="form-control" id="中性粒细胞"
+
+                                       step="0.1" min="1" max="20" placeholder="输入数值" required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+
+                                    <i class="fas fa-tint feature-icon"></i>
+
+                                    血红蛋白 (g/L)
+
+                                </label>
+
+                                <input type="number" class="form-control" id="血红蛋白"
+
+                                       min="60" max="180" placeholder="输入数值" required>
+
+                            </div>
+
+                        </div>
+
+ 
+
+                        <!-- 提交按钮 -->
+
+                        <div class="text-center mt-4">
+
+                            <button type="submit" class="btn btn-predict text-white btn-lg">
+
+                                <i class="fas fa-calculator me-2"></i>
+
+                                计算CRF风险
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+ 
+
+            <!-- 右侧结果显示区域 -->
+
+            <div class="col-lg-6">
+
+                <!-- 加载动画 -->
+
+                <div class="loading-spinner" id="loadingSpinner">
+
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+
+                        <span class="visually-hidden">计算中...</span>
+
+                    </div>
+
+                    <p class="mt-2">正在计算风险，请稍候...</p>
+
+                </div>
+
+ 
+
+                <!-- 风险预测结果 -->
+
+                <div class="result-section" id="resultSection" style="display: none;">
+
+                    <h4 class="mb-4">
+
+                        <i class="fas fa-chart-line feature-icon"></i>
+
+                        风险评估结果
+
+                    </h4>
+
+                   
+
+                    <div class="risk-card" id="riskCard">
+
+                        <div id="riskIcon" class="display-1 mb-3"></div>
+
+                        <h2 id="riskLevel" class="mb-2"></h2>
+
+                        <div id="riskProbability" class="h4 mb-3"></div>
+
+                        <p id="riskDescription" class="text-muted"></p>
+
+                    </div>
+
+ 
+
+                    <!-- 个性化建议 -->
+
+                    <div class="mt-4">
+
+                        <h5 class="mb-3">
+
+                            <i class="fas fa-lightbulb feature-icon"></i>
+
+                            个性化护理建议
+
+                        </h5>
+
+                        <div id="suggestionsContainer">
+
+                            <!-- 建议内容将通过JavaScript动态生成 -->
+
+                        </div>
+
+                    </div>
+
+ 
+
+                    <!-- 模型信息 -->
+
+                    <div class="mt-4 p-3 bg-light rounded">
+
+                        <small class="text-muted">
+
+                            <i class="fas fa-info-circle me-1"></i>
+
+                            基于SGD机器学习模型，使用14项临床特征进行预测。预测结果仅供参考，临床决策请结合专业判断。
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+ 
+
+                <!-- 初始提示 -->
+
+                <div class="result-section" id="initialPrompt">
+
+                    <div class="text-center text-muted py-5">
+
+                        <i class="fas fa-arrow-left display-1 mb-3"></i>
+
+                        <h5>请输入患者信息</h5>
+
+                        <p>在左侧填写完整的临床特征后，点击"计算CRF风险"按钮获取评估结果</p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+ 
+
+    <!-- 页脚 -->
+
+    <footer class="bg-dark text-white mt-5 py-4">
+
+        <div class="container text-center">
+
+            <p class="mb-0">头颈癌CRF风险预测工具 &copy; 2024 - 基于SGD机器学习模型</p>
+
+        </div>
+
+    </footer>
+
+ 
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="静态文件/js/predict.js"></script>
+
+</body>
+
+</html>
